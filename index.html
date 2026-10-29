@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark light">
+<!-- No external resources, no tracking. The plan lives in the URL fragment,
+     which browsers never send to this server; it's only passed on to the app. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<meta property="og:title" content="Ascend workout plan">
+<meta property="og:description" content="Tap to add this plan in Ascend.">
+<title>Ascend workout plan</title>
+<style>
+  :root {
+    --oxblood: #7A1E2C; --on-oxblood: #FFFFFF;
+    --bg: #F2F2F4; --card: #FFFFFF; --text: #0A0A0A; --steel: #6C6C70;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --oxblood: #BE4054; --bg: #0A0A0A; --card: #1C1C1E; --text: #FFFFFF; --steel: #8E8E93; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: var(--bg); color: var(--text);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    padding: 24px;
+  }
+  main { width: 100%; max-width: 420px; background: var(--card); border-radius: 20px; padding: 32px 24px; text-align: center; }
+  svg { width: 44px; height: 44px; color: var(--oxblood); }
+  h1 { font: 700 26px/1.2 "SF Pro Rounded", -apple-system, system-ui, sans-serif; margin: 12px 0 4px; }
+  p { margin: 0; color: var(--steel); }
+  #summary { margin-top: 4px; }
+  a.button {
+    display: block; margin: 28px 0 16px; padding: 16px; border-radius: 14px;
+    background: var(--oxblood); color: var(--on-oxblood); text-decoration: none; font-weight: 600;
+  }
+  a.button[hidden] { display: none; }
+  .note { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>
+  <h1 id="title">Ascend workout plan</h1>
+  <p id="summary">Opening Ascend…</p>
+  <a class="button" id="open" href="#" hidden>Open in Ascend</a>
+  <p class="note" id="note">You need the Ascend app on iPhone, iPad or Mac to add this plan.</p>
+</main>
+<script>
+(function () {
+  var payload = location.hash.slice(1);
+  var title = document.getElementById("title");
+  var summary = document.getElementById("summary");
+  var open = document.getElementById("open");
+
+  if (!payload) {
+    summary.textContent = "This link doesn't contain a plan. Ask for it to be shared again.";
+    return;
+  }
+
+  var appURL = "ascendtraining://plan#" + payload;
+  open.href = appURL;
+  open.hidden = false;
+  summary.textContent = "Tap below to add it in Ascend.";
+
+  // Show the plan's name and size, decoded here in the browser only.
+  try {
+    var parts = payload.split(".");
+    var b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    var bytes = Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); });
+    if (parts[0] === "1" && typeof DecompressionStream === "function") {
+      var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      new Response(stream).text().then(function (json) {
+        var plan = JSON.parse(json);
+        var exercises = plan.days.reduce(function (n, d) { return n + d.exercises.length; }, 0);
+        title.textContent = plan.name;
+        summary.textContent = plan.days.length + (plan.days.length === 1 ? " day · " : " days · ") +
+          exercises + (exercises === 1 ? " exercise" : " exercises");
+      }).catch(function () {});
+    }
+  } catch (e) {}
+
+  // Hand straight to the app; the button stays as a fallback.
+  setTimeout(function () { location.href = appURL; }, 300);
+})();
+</script>
+</body>
+</html>
